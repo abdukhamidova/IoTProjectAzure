@@ -3,7 +3,7 @@ using Microsoft.Azure.Devices.Client;
 
 //connection string, ktory pozwala nam się połączyć aplikacji do IoT Hub
 string deviceConnectionString = "HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk1;SharedAccessKey=Kh1uVOuO+CjHbvXCW3wPIbQnZuK3A1mXd1Dsp5SNuTk=";
-
+//stworzenie klienta (klientem jest device w Azure)
 using var deviceClient = DeviceClient.CreateFromConnectionString(deviceConnectionString, TransportType.Mqtt);
 await deviceClient.OpenAsync(); //otwiera naszą instację: start komunikacji
 
