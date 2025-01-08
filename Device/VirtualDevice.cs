@@ -1,7 +1,9 @@
 ﻿using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Opc.UaFx;
+using Opc.UaFx.Client;
 using System.Data;
 using System.Net.Mime;
 using System.Text;
@@ -11,10 +13,27 @@ namespace SDKDemo.Device
     public class VirtualDevice
     {
         private readonly DeviceClient client;   //obiekt naszego klienta/urządzenia
-        private readonly Dictionary<object, object> jobValues;
+        private object state;
         public VirtualDevice(DeviceClient deviceClient){    //konstruktor
             this.client = deviceClient;
         }
+
+        [Flags]
+        public enum DeviceStatus
+        {
+            None = 0,               // 0000
+            EmergencyStop = 1,      // 0001
+            PowerFailure = 2,       // 0010
+            SensorFailure = 4,      // 0100
+            Unknown = 8             // 1000
+        }
+
+        #region Get info from OPC
+        public void GetJob(IEnumerable<OpcValue> job)
+        {
+
+        }
+        #endregion
 
         ///komunikacja: wysyłanie wiadomości
         #region Sedning Message D2C
@@ -71,7 +90,7 @@ namespace SDKDemo.Device
             }
         }
         #endregion
-        
+
         ///obsługiwanie metod urządzenia (można powiedzieć że to taka zdalna kontrola)
         #region Device Methods
         //obsługwanie metod wywołanych przez device IoTHub
@@ -99,26 +118,50 @@ namespace SDKDemo.Device
 
         ///synchronizacja device twinów
         #region Device Twin
-        //public async Task UpdateTwinAsync()
-        //{
-        //    var twin = await client.GetTwinAsync();
-        //    Console.WriteLine($"\n Initial twin value received: \n{JsonConvert.SerializeObject(twin, Formatting.Indented)}");
-        //    Console.WriteLine();
+        public async Task UpdateTwinAsync(IEnumerable<OpcValue> job)
+        {
+            var twin = await client.GetTwinAsync();
+            Console.WriteLine($"\n Initial twin value received: \n{JsonConvert.SerializeObject(twin, Formatting.Indented)}");
+            Console.WriteLine();
 
-        //    var reportedProperties = new TwinCollection();
-        //    reportedProperties["DateTimeLastAppLaunch"] = DateTime.Now;
-        //    await client.UpdateReportedPropertiesAsync(reportedProperties);
-        //}
+            var reportedProperties = new TwinCollection();
+            //ustawienie Production Rate
+            reportedProperties["ProductionRate"] = job.ElementAt(3).Value;
 
-        //private async Task OnDesiredPropertyChange(TwinCollection desiredProperties, object userContext)
-        //{
-        //    Console.WriteLine($"\t Desired property change: \n\t {JsonConvert.SerializeObject(desiredProperties)}");
-        //    Console.WriteLine($"\t Sending current time as reported property");
-        //    TwinCollection reportedCollection = new TwinCollection();
-        //    reportedCollection["DataTimeLastPropertyChangeReceived"] = DateTime.Now.ToLocalTime();
+            #region Reported State
+            //konwersja wartosci z job na flage
+            var deviceStatusValue = (int)job.ElementAt(13).Value;
+            var deviceStatus = (DeviceStatus)deviceStatusValue;
+            //zrobienie listy z aktywnych flag
+            var activeStatuses = Enum.GetValues(typeof(DeviceStatus))
+                .Cast<DeviceStatus>()
+                .Where(flag => flag != DeviceStatus.None && deviceStatus.HasFlag(flag))
+                .Select(flag => flag.ToString()) // Konwersja na string
+                .ToList();
 
-        //    await client.UpdateReportedPropertiesAsync(reportedCollection).ConfigureAwait(false);
-        //}
+            
+            reportedProperties["DeviceStatus"] = new JArray(activeStatuses);
+                
+            #endregion
+
+            await client.UpdateReportedPropertiesAsync(reportedProperties);
+        }
+
+        private async Task OnDesiredPropertyChange(TwinCollection desiredProperties, object userContext)
+        {
+            Console.WriteLine($"\t Desired property change: \n\t {JsonConvert.SerializeObject(desiredProperties)}");
+            Console.WriteLine($"\t Sending current time as reported property");
+            TwinCollection reportedCollection = new TwinCollection();
+            reportedCollection["ProductionRate"] = desiredProperties["ProductionRate"];
+            using (var client = new OpcClient("opc.tcp://localhost:4840/"))
+            {
+                client.Connect();
+                client.WriteNode($"ns=2;s=Device 1/ProductionRate", (int)desiredProperties["ProductionRate"]);
+                Console.WriteLine("Updated");
+
+            }
+            await client.UpdateReportedPropertiesAsync(reportedCollection).ConfigureAwait(false);
+        }
         #endregion
 
         ///handler dla obsługi eventów otrzymywanych od Cloud
@@ -128,7 +171,7 @@ namespace SDKDemo.Device
             await client.SetReceiveMessageHandlerAsync(OnC2dMessageReceivedAsync, client);
             //await client.SetMethodHandlerAsync("SendMessage", SendMessageHandler, client);
            // await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
-            //await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
+            await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
         }
     }
 }

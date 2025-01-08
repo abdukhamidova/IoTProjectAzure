@@ -10,7 +10,8 @@ await deviceClient.OpenAsync(); //otwiera naszą instację: start komunikacji
 
 //stworzenie wirtualnego urządzenia
 var device = new VirtualDevice(deviceClient);
-//await device.InitializeHandlers();  //inicjaliacja eventów - od teraz aplikacja będzie czekała na możliwe wiadomości i będzie mogła je obsłużyć
+await device.InitializeHandlers();  //inicjaliacja eventów - od teraz aplikacja będzie czekała na możliwe wiadomości i będzie mogła je obsłużyć
+
 Console.WriteLine($"Connection success!");
 
 using (var client = new OpcClient("opc.tcp://localhost:4840/"))
@@ -30,7 +31,7 @@ using (var client = new OpcClient("opc.tcp://localhost:4840/"))
     new OpcReadNode("ns=2;s=Device 1/BadCount", OpcAttribute.DisplayName),          //10 telemetria
         new OpcReadNode("ns=2;s=Device 1/BadCount"),                                //11
     new OpcReadNode("ns=2;s=Device 1/DeviceError", OpcAttribute.DisplayName),       //12 error
-    new OpcReadNode("ns=2;s=Device 1/DeviceError"),                                 //14    
+    new OpcReadNode("ns=2;s=Device 1/DeviceError"),                                 //13    
 };
 
     while (true)
@@ -38,6 +39,7 @@ using (var client = new OpcClient("opc.tcp://localhost:4840/"))
         //pobieranie w petli telemetrii z symulatora
         IEnumerable<OpcValue> job = client.ReadNodes(commands);
         device.SendMessage(job);
+        await device.UpdateTwinAsync(job);
         // Wyświetlenie wyników
         foreach (var item in job)
         {
