@@ -13,9 +13,12 @@ namespace SDKDemo.Device
     public class VirtualDevice
     {
         private readonly DeviceClient client;   //obiekt naszego klienta/urządzenia
-        private object state;
-        public VirtualDevice(DeviceClient deviceClient){    //konstruktor
+        private readonly string opcDeviceName;
+        private int lastReportedStatus = 0;
+        public VirtualDevice(DeviceClient deviceClient, string opcDeviceName)
+        {    //konstruktor
             this.client = deviceClient;
+            this.opcDeviceName = opcDeviceName;
         }
 
         [Flags]
@@ -28,22 +31,31 @@ namespace SDKDemo.Device
             Unknown = 8             // 1000
         }
 
-        #region Get info from OPC
-        public void GetJob(IEnumerable<OpcValue> job)
-        {
 
+        ///handler dla obsługi eventów otrzymywanych od Cloud
+        public async Task InitializeHandlers()
+        {//jeżeli metoda od Microsoft set...async wykryje otrzymanie wiadomości to włączy metodę wyświetlającą wadomość
+            await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
+
+            await client.SetReceiveMessageHandlerAsync(OnC2dMessageReceivedAsync, client);
+            //await client.SetMethodHandlerAsync("SendMessage", SendMessageHandler, client);
+            //await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
+            
+            lastReportedStatus = await GetReportedDeviceStatusAsync();
         }
-        #endregion
 
-        ///komunikacja: wysyłanie wiadomości
-        #region Sedning Message D2C
-        //poniższa metoda służy do wysyłania wiadomości z device do cloud
-        //sposób wykorzystania, np.: device będzie wysyłać pewnie informacje (np. temperaturę)
-        //a cloud będzie je jakoś przetwarzać u siebie
-        public async Task SendMessage(IEnumerable<OpcValue> job)
+        // !!! do przemyslenia !!!
+        public void JobManager(IEnumerable<OpcValue> job)
         {
-            Console.WriteLine("\n Sending message... ");
-            //ustawianie tresci wiadomosci
+            sendTelemetry(job);
+            Task updateTwin = UpdateTwinAsync(job);
+        }
+
+        //komunikacja: wysyłanie wiadomości
+        #region Set Message Data
+        private async void sendTelemetry(IEnumerable<OpcValue> job)
+        {
+            //ustawianie telemetrii
             var data = new
             {
                 ProductionStatus = job.ElementAt(1).Value,
@@ -52,7 +64,32 @@ namespace SDKDemo.Device
                 GoodCount = job.ElementAt(9).Value,
                 BadCount = job.ElementAt(11).Value
             };
+            await SendMessage(data);
+        }
+        private async void sendDeviceStatus(int oldStatus, int newStatus)
+        {
+            //konwersja na flagi
+            var oldStatusFlags = (DeviceStatus)oldStatus;
+            var newStatusFlags = (DeviceStatus)newStatus;
+            
+            string oldStatusDescription = oldStatusFlags.ToString();
+            string newStatusDescription = newStatusFlags.ToString();
 
+            //tresc wiadomosci
+            var data = new
+            {
+                Message = $"Status has changed from {oldStatusDescription} to {newStatusDescription}"
+            };
+
+            await SendMessage(data); // Załóżmy, że SendMessage obsługuje synchronizację
+        }
+        #endregion
+
+        #region Sedning Message D2C
+        //poniższa metoda służy do wysyłania wiadomości z device do cloud
+        public async Task SendMessage(object data)
+        {
+            Console.WriteLine("\n Sending message... ");
             //formatowanie wiadomosci do wyslania
             var dataString = JsonConvert.SerializeObject(data);
             Message eventMessage = new Message(Encoding.UTF8.GetBytes(dataString));
@@ -92,56 +129,87 @@ namespace SDKDemo.Device
         #endregion
 
         ///obsługiwanie metod urządzenia (można powiedzieć że to taka zdalna kontrola)
-        #region Device Methods
+        #region Direct Methods
         //obsługwanie metod wywołanych przez device IoTHub
-        //private async Task<MethodResponse> SendMessageHandler(MethodRequest methodRequest, object userContext)
-        //{
-        //    //co za metoda została otrzymana
-        //    Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
-        //    //co ta metoda w sobie zawiera (konwersja string json -> obiekt)
-        //    var payload = JsonConvert.DeserializeAnonymousType(methodRequest.DataAsJson, new { nrOfMessages = default(int), delay = default(int) });
+        private async Task<MethodResponse> EmergencyStopHandler(MethodRequest methodRequest, object userContext)
+        {
+            ////co za metoda została otrzymana
+            //Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
+            ////co ta metoda w sobie zawiera (konwersja string json -> obiekt)
+            //var payload = JsonConvert.DeserializeAnonymousType(methodRequest.DataAsJson, new { nrOfMessages = default(int), delay = default(int) });
 
-        //    //np. dana funkcja odpowiada na wywołanie metody -> wysłanie wiadomości
-        //    await SendMessage(payload.nrOfMessages, payload.delay);
-        //    return new MethodResponse(0);
-        //}
+            ////np. dana funkcja odpowiada na wywołanie metody -> wysłanie wiadomości
+            ////await SendMessage(payload.nrOfMessages, payload.delay);
+            return new MethodResponse(0);
+        }
 
-        ////w jaki sposób obsługiwać metody, dla których nie napisano oddzielnych funckji obsługiwania
-        //private async Task<MethodResponse> DefaultServiceHandler(MethodRequest methodRequest, object userContext)
-        //{
-        //    Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
-        //    await Task.Delay(1000);
-        //    return new MethodResponse(0);
-        //}
+        //w jaki sposób obsługiwać metody, dla których nie napisano oddzielnych funckji obsługiwania
+        private async Task<MethodResponse> DefaultServiceHandler(MethodRequest methodRequest, object userContext)
+        {
+            Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
+            await Task.Delay(1000);
+            return new MethodResponse(0);
+        }
         #endregion
 
 
         ///synchronizacja device twinów
         #region Device Twin
+
+        public async Task<int> GetReportedDeviceStatusAsync()
+        {
+            var twin = await client.GetTwinAsync();
+            var reportedProperties = twin.Properties.Reported;
+
+            if (reportedProperties.Contains("DeviceStatus"))
+            {
+                var deviceStatusArray = reportedProperties["DeviceStatus"] as JArray;
+                var statusList = deviceStatusArray?.ToObject<List<string>>() ?? new List<string>();
+
+                int deviceStatusNumber = 0;
+
+                foreach (var status in statusList)
+                {
+                    if (Enum.TryParse<DeviceStatus>(status, true, out var parsedStatus))
+                    {
+                        deviceStatusNumber |= (int)parsedStatus; // Add the flag to the result
+                    }
+                }
+
+                return deviceStatusNumber;
+            }
+
+            return 0;
+        }
+
         public async Task UpdateTwinAsync(IEnumerable<OpcValue> job)
         {
             var twin = await client.GetTwinAsync();
-            Console.WriteLine($"\n Initial twin value received: \n{JsonConvert.SerializeObject(twin, Formatting.Indented)}");
-            Console.WriteLine();
+            //Console.WriteLine($"\n Initial twin value received: \n{JsonConvert.SerializeObject(twin, Formatting.Indented)}");
+            //Console.WriteLine();
 
             var reportedProperties = new TwinCollection();
             //ustawienie Production Rate
             reportedProperties["ProductionRate"] = job.ElementAt(3).Value;
 
             #region Reported State
-            //konwersja wartosci z job na flage
+            //konwersja wartosci z job
             var deviceStatusValue = (int)job.ElementAt(13).Value;
-            var deviceStatus = (DeviceStatus)deviceStatusValue;
-            //zrobienie listy z aktywnych flag
-            var activeStatuses = Enum.GetValues(typeof(DeviceStatus))
-                .Cast<DeviceStatus>()
-                .Where(flag => flag != DeviceStatus.None && deviceStatus.HasFlag(flag))
-                .Select(flag => flag.ToString()) // Konwersja na string
-                .ToList();
-
-            
-            reportedProperties["DeviceStatus"] = new JArray(activeStatuses);
+            //jezeli status sie zmienil
+            if (deviceStatusValue != lastReportedStatus) {
+                sendDeviceStatus(lastReportedStatus, deviceStatusValue);
+                lastReportedStatus = deviceStatusValue;
+                var deviceStatus = (DeviceStatus)deviceStatusValue;
                 
+                //zrobienie listy z aktywnych flag
+                var activeStatuses = Enum.GetValues(typeof(DeviceStatus))
+                    .Cast<DeviceStatus>()
+                    .Where(flag => flag != DeviceStatus.None && deviceStatus.HasFlag(flag))
+                    .Select(flag => flag.ToString()) // Konwersja na string
+                    .ToList();
+
+                reportedProperties["DeviceStatus"] = new JArray(activeStatuses);
+            }
             #endregion
 
             await client.UpdateReportedPropertiesAsync(reportedProperties);
@@ -156,7 +224,7 @@ namespace SDKDemo.Device
             using (var client = new OpcClient("opc.tcp://localhost:4840/"))
             {
                 client.Connect();
-                client.WriteNode($"ns=2;s=Device 1/ProductionRate", (int)desiredProperties["ProductionRate"]);
+                client.WriteNode($"ns=2;s={opcDeviceName}/ProductionRate", (int)desiredProperties["ProductionRate"]);
                 Console.WriteLine("Updated");
 
             }
@@ -164,14 +232,5 @@ namespace SDKDemo.Device
         }
         #endregion
 
-        ///handler dla obsługi eventów otrzymywanych od Cloud
-        public async Task InitializeHandlers()
-        {
-            //jeżeli metoda od Microsoft set...async wykryje otrzymanie wiadomości to włączy metodę wyświetlającą wadomość
-            await client.SetReceiveMessageHandlerAsync(OnC2dMessageReceivedAsync, client);
-            //await client.SetMethodHandlerAsync("SendMessage", SendMessageHandler, client);
-           // await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
-            await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
-        }
     }
 }
