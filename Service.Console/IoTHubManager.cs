@@ -16,7 +16,6 @@ namespace ServiceSdkDemo.Lib
             this.registry = registry;
         }
 
-
         public async Task SendMessage(string messageText, string deviceId)
         {
             //tworzona zostaje zawartość wiadomości, obiekt jest konwertowany na jsona i wysłany do urządzenia
@@ -38,14 +37,26 @@ namespace ServiceSdkDemo.Lib
         }
 
 
-        public async Task UpdateDesiredTwin(string deviceId, string propertyName, dynamic propertyValue)
-        {
-            //propertyName - nazwa własciwości, którą rządamy aby Twin zgłaszał i jej wartość
+        //public async Task UpdateDesiredTwin(string deviceId, string propertyName, dynamic propertyValue)
+        //{
+        //    //propertyName - nazwa własciwości, którą rządamy aby Twin zgłaszał i jej wartość
 
-            var twin = await registry.GetTwinAsync(deviceId);
-            //modyfikujemy rządaną właściwość/dodajemy ją
-            twin.Properties.Desired[propertyName] = propertyValue;
+        //    var twin = await registry.GetTwinAsync(deviceId);
+        //    //modyfikujemy rządaną właściwość/dodajemy ją
+        //    twin.Properties.Desired[propertyName] = propertyValue;
+        //    await registry.UpdateTwinAsync(twin.DeviceId, twin, twin.ETag);
+        //}
+
+        public async Task ChangeProductionRateDesiredTwin(string connectionDeviceId)
+        {
+            var twin = await registry.GetTwinAsync(connectionDeviceId);
+            //sprawdzenie zeby 
+            var productionRate = twin.Properties.Reported["ProductionRate"];
+            if (productionRate >= 10)
+                twin.Properties.Desired["ProductionRate"] = productionRate - 10;
+            
             await registry.UpdateTwinAsync(twin.DeviceId, twin, twin.ETag);
         }
+
     }
 }

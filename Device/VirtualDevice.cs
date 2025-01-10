@@ -61,7 +61,6 @@ namespace SDKDemo.Device
             //ustawianie telemetrii
             var data = new
             {
-                DeviceName = opcDeviceName,
                 ProductionStatus = job.ElementAt(1).Value,
                 WorkerId = job.ElementAt(5).Value,
                 Temperature = job.ElementAt(7).Value,

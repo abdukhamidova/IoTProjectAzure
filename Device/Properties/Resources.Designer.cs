@@ -61,7 +61,7 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk1;SharedAccessKey=Kh1uVOuO+CjHbvXCW3wPIbQnZuK3A1mXd1Dsp5SNuTk=.
+        ///   Looks up a localized string similar to sdk1.
         /// </summary>
         internal static string iotDevice1ConnectionString {
             get {
@@ -70,7 +70,7 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk2;SharedAccessKey=2mkX8njZsSzJoasb5OcXuvNBpzYSkeA9h5Kw3wlfxos=.
+        ///   Looks up a localized string similar to sdk2.
         /// </summary>
         internal static string iotDevice2ConnectionString {
             get {
@@ -79,7 +79,7 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk3;SharedAccessKey=/M998T45e+8E9Y7sfLTYbkuISevqWEvrJ74rNPPqDJA=.
+        ///   Looks up a localized string similar to sdk3.
         /// </summary>
         internal static string iotDevice3ConnectionString {
             get {

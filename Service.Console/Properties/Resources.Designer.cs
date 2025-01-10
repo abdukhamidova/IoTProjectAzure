@@ -61,11 +61,29 @@ namespace Service.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to HostName=LittleHubIot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=O7eYa+R8qN91t7kaijSqLLTTEISMjxV4iAIoTDeoUU0=.
+        ///   Looks up a localized string similar to iot constr.
         /// </summary>
         internal static string iotHubConnectionString {
             get {
                 return ResourceManager.GetString("iotHubConnectionString", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to kpi queue.
+        /// </summary>
+        internal static string productionKPIQueueName {
+            get {
+                return ResourceManager.GetString("productionKPIQueueName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to serv bus.
+        /// </summary>
+        internal static string serviceBusConnectionString {
+            get {
+                return ResourceManager.GetString("serviceBusConnectionString", resourceCulture);
             }
         }
     }

@@ -118,12 +118,12 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="iotDevice1ConnectionString" xml:space="preserve">
-    <value>HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk1;SharedAccessKey=Kh1uVOuO+CjHbvXCW3wPIbQnZuK3A1mXd1Dsp5SNuTk=</value>
+    <value>sdk1</value>
   </data>
   <data name="iotDevice2ConnectionString" xml:space="preserve">
-    <value>HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk2;SharedAccessKey=2mkX8njZsSzJoasb5OcXuvNBpzYSkeA9h5Kw3wlfxos=</value>
+    <value>sdk2</value>
   </data>
   <data name="iotDevice3ConnectionString" xml:space="preserve">
-    <value>HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk3;SharedAccessKey=/M998T45e+8E9Y7sfLTYbkuISevqWEvrJ74rNPPqDJA=</value>
+    <value>sdk3</value>
   </data>
 </root>

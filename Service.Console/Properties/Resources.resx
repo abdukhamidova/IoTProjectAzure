@@ -118,6 +118,12 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="iotHubConnectionString" xml:space="preserve">
-    <value>HostName=LittleHubIot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=O7eYa+R8qN91t7kaijSqLLTTEISMjxV4iAIoTDeoUU0=</value>
+    <value>iot constr</value>
+  </data>
+  <data name="productionKPIQueueName" xml:space="preserve">
+    <value>kpi queue</value>
+  </data>
+  <data name="serviceBusConnectionString" xml:space="preserve">
+    <value>serv bus</value>
   </data>
 </root>
