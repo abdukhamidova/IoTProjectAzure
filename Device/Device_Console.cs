@@ -36,7 +36,7 @@ public class Device_Console
             await deviceClient.OpenAsync(); //otwiera naszą instację: start komunikacji
 
             //tworzenie virtual device
-            var device = new VirtualDevice(deviceClient, opcDevices[i].DisplayName);
+            var device = new VirtualDevice(deviceClient, opcDevices[i].DisplayName, opcClient);
             await device.InitializeHandlers(); //inicjalizacja handlerow
 
             // Dodanie urządzenia do listy

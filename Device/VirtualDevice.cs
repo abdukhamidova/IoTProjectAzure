@@ -14,11 +14,13 @@ namespace SDKDemo.Device
     {
         private readonly DeviceClient client;   //obiekt naszego klienta/urządzenia
         private readonly string opcDeviceName;
+        private readonly OpcClient opcClient;
         private int lastReportedStatus = 0;
-        public VirtualDevice(DeviceClient deviceClient, string opcDeviceName)
+        public VirtualDevice(DeviceClient deviceClient, string opcDeviceName, OpcClient opcClient)
         {    //konstruktor
             this.client = deviceClient;
             this.opcDeviceName = opcDeviceName;
+            this.opcClient = opcClient;
         }
 
         [Flags]
@@ -36,8 +38,9 @@ namespace SDKDemo.Device
         public async Task InitializeHandlers()
         {//jeżeli metoda od Microsoft set...async wykryje otrzymanie wiadomości to włączy metodę wyświetlającą wadomość
             await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
-
             await client.SetReceiveMessageHandlerAsync(OnC2dMessageReceivedAsync, client);
+            await client.SetMethodHandlerAsync("EmergencyStop", DeviceStatusErrorHandler, client);
+            await client.SetMethodHandlerAsync("ResetErrorStatus", DeviceStatusErrorHandler, client);
             //await client.SetMethodHandlerAsync("SendMessage", SendMessageHandler, client);
             //await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
             
@@ -131,15 +134,19 @@ namespace SDKDemo.Device
         ///obsługiwanie metod urządzenia (można powiedzieć że to taka zdalna kontrola)
         #region Direct Methods
         //obsługwanie metod wywołanych przez device IoTHub
-        private async Task<MethodResponse> EmergencyStopHandler(MethodRequest methodRequest, object userContext)
+        private async Task<MethodResponse> DeviceStatusErrorHandler(MethodRequest methodRequest, object userContext)
         {
-            ////co za metoda została otrzymana
-            //Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
-            ////co ta metoda w sobie zawiera (konwersja string json -> obiekt)
-            //var payload = JsonConvert.DeserializeAnonymousType(methodRequest.DataAsJson, new { nrOfMessages = default(int), delay = default(int) });
-
-            ////np. dana funkcja odpowiada na wywołanie metody -> wysłanie wiadomości
-            ////await SendMessage(payload.nrOfMessages, payload.delay);
+            //co za metoda została otrzymana
+            var result = opcClient.CallMethod($"ns=2;s={opcDeviceName}", $"ns=2;s={opcDeviceName}/{methodRequest.Name}");
+            if (result != null)
+            {
+                Console.WriteLine("Emergency Stop executed successfully.");
+            }
+            else
+            {
+                Console.WriteLine("Failed to execute Emergency Stop.");
+            }
+            await Task.Delay(1000); //mowi ze brakuje await
             return new MethodResponse(0);
         }
 
