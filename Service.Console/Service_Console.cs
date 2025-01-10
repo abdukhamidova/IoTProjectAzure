@@ -1,8 +1,10 @@
 ﻿using Microsoft.Azure.Devices;
+using Service.Properties;
 using ServiceSdkDemo.Console;
-using ServiceSdkDemo.Lib;   //wpisywane wg namespace, ewentualnie to poprawic
+using ServiceSdkDemo.Lib;
+using System.Runtime.Versioning;   //wpisywane wg namespace, ewentualnie to poprawic
 
-string serviceConnectionString = "HostName=LittleHubIot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=O7eYa+R8qN91t7kaijSqLLTTEISMjxV4iAIoTDeoUU0=";
+string serviceConnectionString = Resources.iotHubConnectionString;
 
 using var serviceClient = ServiceClient.CreateFromConnectionString(serviceConnectionString);
 using var registryManager = RegistryManager.CreateFromConnectionString(serviceConnectionString);

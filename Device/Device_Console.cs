@@ -3,6 +3,8 @@ using Microsoft.Azure.Devices.Client;
 using Opc.UaFx.Client;
 using Opc.UaFx;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.Amqp.Framing;
+using Device.Properties;
 
 
 public class Device_Console
@@ -11,12 +13,13 @@ public class Device_Console
     public static async Task Main(string[] args)
     {
         int deviceNum = 0;
+        
         //rzeba to przerzucic do pliku konfiguracyjnego
         List<string> deviceConnectionStrings = new List<string>
         {
-            "HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk1;SharedAccessKey=Kh1uVOuO+CjHbvXCW3wPIbQnZuK3A1mXd1Dsp5SNuTk=",
-            "HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk2;SharedAccessKey=2mkX8njZsSzJoasb5OcXuvNBpzYSkeA9h5Kw3wlfxos=",
-            "HostName=LittleHubIot.azure-devices.net;DeviceId=DeviceDemoSdk3;SharedAccessKey=/M998T45e+8E9Y7sfLTYbkuISevqWEvrJ74rNPPqDJA="
+            Resources.iotDevice1ConnectionString,
+            Resources.iotDevice2ConnectionString,
+            Resources.iotDevice3ConnectionString
         };
 
         //polaczenie z serwerem OPC

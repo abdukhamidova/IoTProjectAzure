@@ -61,6 +61,7 @@ namespace SDKDemo.Device
             //ustawianie telemetrii
             var data = new
             {
+                DeviceName = opcDeviceName,
                 ProductionStatus = job.ElementAt(1).Value,
                 WorkerId = job.ElementAt(5).Value,
                 Temperature = job.ElementAt(7).Value,
@@ -140,11 +141,11 @@ namespace SDKDemo.Device
             var result = opcClient.CallMethod($"ns=2;s={opcDeviceName}", $"ns=2;s={opcDeviceName}/{methodRequest.Name}");
             if (result != null)
             {
-                Console.WriteLine("Emergency Stop executed successfully.");
+                Console.WriteLine($"{methodRequest.Name} executed successfully.");
             }
             else
             {
-                Console.WriteLine("Failed to execute Emergency Stop.");
+                Console.WriteLine($"Failed to execute {methodRequest.Name}.");
             }
             await Task.Delay(1000); //mowi ze brakuje await
             return new MethodResponse(0);
