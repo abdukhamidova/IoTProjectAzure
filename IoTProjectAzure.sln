@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IoTProjectAzure", "IoTProjectAzure\IoTProjectAzure.csproj", "{8AA7C698-ABBE-4DB0-BB9C-351FDE5C110C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Device", "Device\Device.csproj", "{47778EF4-713C-4348-AB3F-228BCD5DA70E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "Service.Console\Service.csproj", "{988BCE55-59AD-4126-A7F8-CC00C6F90CA2}"
@@ -15,10 +13,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8AA7C698-ABBE-4DB0-BB9C-351FDE5C110C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8AA7C698-ABBE-4DB0-BB9C-351FDE5C110C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8AA7C698-ABBE-4DB0-BB9C-351FDE5C110C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8AA7C698-ABBE-4DB0-BB9C-351FDE5C110C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{47778EF4-713C-4348-AB3F-228BCD5DA70E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{47778EF4-713C-4348-AB3F-228BCD5DA70E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{47778EF4-713C-4348-AB3F-228BCD5DA70E}.Release|Any CPU.ActiveCfg = Release|Any CPU

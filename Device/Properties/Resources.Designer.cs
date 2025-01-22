@@ -61,7 +61,7 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to sdk1.
+        ///   Looks up a localized string similar to HostName=.....
         /// </summary>
         internal static string iotDevice1ConnectionString {
             get {
@@ -70,7 +70,7 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to sdk2.
+        ///   Looks up a localized string similar to HostName=.....
         /// </summary>
         internal static string iotDevice2ConnectionString {
             get {
@@ -79,11 +79,47 @@ namespace Device.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to sdk3.
+        ///   Looks up a localized string similar to HostName=.....
         /// </summary>
         internal static string iotDevice3ConnectionString {
             get {
                 return ResourceManager.GetString("iotDevice3ConnectionString", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to endpoint=....
+        /// </summary>
+        internal static string iotEmailConnectionString {
+            get {
+                return ResourceManager.GetString("iotEmailConnectionString", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to url.
+        /// </summary>
+        internal static string opcClientURL {
+            get {
+                return ResourceManager.GetString("opcClientURL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to adres email.
+        /// </summary>
+        internal static string receiverEmailAddress {
+            get {
+                return ResourceManager.GetString("receiverEmailAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to adres email.
+        /// </summary>
+        internal static string senderEmailAddress {
+            get {
+                return ResourceManager.GetString("senderEmailAddress", resourceCulture);
             }
         }
     }

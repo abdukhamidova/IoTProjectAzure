@@ -117,13 +117,20 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="deviceErrorQueueName" xml:space="preserve">
+    <value>nazwa-kolejki-errors</value>
+    <comment>Nazwa kolejki utworzonej w Service Bus Namespace, która będzie przyjmować błędy maszyn.</comment>
+  </data>
   <data name="iotHubConnectionString" xml:space="preserve">
-    <value>iot constr</value>
+    <value>HostName=....</value>
+    <comment>Connection String  do IoT Hub na platformie Azure.</comment>
   </data>
   <data name="productionKPIQueueName" xml:space="preserve">
-    <value>kpi queue</value>
+    <value>nazwa-kolejki-kpi</value>
+    <comment>Nazwa kolejki utworzonej w Service Bus Namespace, która będzie przyjmować wartość KPI maszyn.</comment>
   </data>
   <data name="serviceBusConnectionString" xml:space="preserve">
-    <value>serv bus</value>
+    <value>Endpoint=...</value>
+    <comment>Connection String do Service Bus Namespace na platformie Azure.</comment>
   </data>
 </root>

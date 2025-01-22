@@ -118,12 +118,31 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="iotDevice1ConnectionString" xml:space="preserve">
-    <value>sdk1</value>
+    <value>HostName=....</value>
+    <comment>Connection String urządzenia stworzonego  w IoT Hub na platformie Azure.</comment>
   </data>
   <data name="iotDevice2ConnectionString" xml:space="preserve">
-    <value>sdk2</value>
+    <value>HostName=....</value>
+    <comment>Connection String urządzenia stworzonego  w IoT Hub na platformie Azure.</comment>
   </data>
   <data name="iotDevice3ConnectionString" xml:space="preserve">
-    <value>sdk3</value>
+    <value>HostName=....</value>
+    <comment>Connection String urządzenia stworzonego  w IoT Hub na platformie Azure.</comment>
+  </data>
+  <data name="iotEmailConnectionString" xml:space="preserve">
+    <value>endpoint=...</value>
+    <comment>Connection String stworzonego Communication Service na platformie Azure.</comment>
+  </data>
+  <data name="opcClientURL" xml:space="preserve">
+    <value>url</value>
+    <comment>Link URL do serwera OPC UA.</comment>
+  </data>
+  <data name="receiverEmailAddress" xml:space="preserve">
+    <value>adres email</value>
+    <comment>Adres email, na który będą przychodzić wiadomości o wystąpieniu nowych błędów na maszynach.</comment>
+  </data>
+  <data name="senderEmailAddress" xml:space="preserve">
+    <value>adres email</value>
+    <comment>Adres email w Communication Service na platformie Azure, skąd będą wysyłane wiadomości.</comment>
   </data>
 </root>

@@ -1,4 +1,7 @@
-﻿using Microsoft.Azure.Devices.Client;
+﻿using Azure;
+using Azure.Communication.Email;
+using Device.Properties;
+using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -12,15 +15,22 @@ namespace SDKDemo.Device
 {
     public class VirtualDevice
     {
-        private readonly DeviceClient client;   //obiekt naszego klienta/urządzenia
+        private readonly DeviceClient client;
         private readonly string opcDeviceName;
         private readonly OpcClient opcClient;
         private int lastReportedStatus = 0;
+
+        private readonly string emailConnectionString = Resources.iotEmailConnectionString;
+        private readonly EmailClient senderClient;
+        private readonly string senderAddress = Resources.senderEmailAddress;
+        private readonly string receiverAddress = Resources.receiverEmailAddress;
         public VirtualDevice(DeviceClient deviceClient, string opcDeviceName, OpcClient opcClient)
-        {    //konstruktor
+        {
             this.client = deviceClient;
             this.opcDeviceName = opcDeviceName;
             this.opcClient = opcClient;
+
+            this.senderClient = new EmailClient(emailConnectionString);
         }
 
         [Flags]
@@ -33,32 +43,29 @@ namespace SDKDemo.Device
             Unknown = 8             // 1000
         }
 
-
-        ///handler dla obsługi eventów otrzymywanych od Cloud
         public async Task InitializeHandlers()
-        {//jeżeli metoda od Microsoft set...async wykryje otrzymanie wiadomości to włączy metodę wyświetlającą wadomość
+        {
             await client.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChange, client);
             await client.SetReceiveMessageHandlerAsync(OnC2dMessageReceivedAsync, client);
+
             await client.SetMethodHandlerAsync("EmergencyStop", DeviceStatusErrorHandler, client);
             await client.SetMethodHandlerAsync("ResetErrorStatus", DeviceStatusErrorHandler, client);
-            //await client.SetMethodHandlerAsync("SendMessage", SendMessageHandler, client);
-            //await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
+           
+            await client.SetMethodDefaultHandlerAsync(DefaultServiceHandler, client);
             
             lastReportedStatus = await GetReportedDeviceStatusAsync();
         }
 
-        // !!! do przemyslenia !!!
         public void JobManager(IEnumerable<OpcValue> job)
         {
             sendTelemetry(job);
             Task updateTwin = UpdateTwinAsync(job);
         }
 
-        //komunikacja: wysyłanie wiadomości
         #region Set Message Data
         private async void sendTelemetry(IEnumerable<OpcValue> job)
         {
-            //ustawianie telemetrii
+            Console.WriteLine($"\nSending telemetry to {opcDeviceName}... ");
             var data = new
             {
                 ProductionStatus = job.ElementAt(1).Value,
@@ -71,72 +78,103 @@ namespace SDKDemo.Device
         }
         private async void sendDeviceStatus(int oldStatus, int newStatus)
         {
-            //konwersja na flagi
+            Console.WriteLine($"\nSending device status to {opcDeviceName}... ");
             var oldStatusFlags = (DeviceStatus)oldStatus;
             var newStatusFlags = (DeviceStatus)newStatus;
             
             string oldStatusDescription = oldStatusFlags.ToString();
             string newStatusDescription = newStatusFlags.ToString();
 
-            //tresc wiadomosci
             var data = new
             {
                 Message = $"Status has changed from {oldStatusDescription} to {newStatusDescription}"
             };
 
-            await SendMessage(data); // Załóżmy, że SendMessage obsługuje synchronizację
+            await SendMessage(data);
+        }
+
+        private async void sendNewDeviceError(int oldStatus, int newStatus)
+        {
+            Console.WriteLine($"\nSending new {opcDeviceName} error... ");
+            int addedErrors = newStatus & ~oldStatus;
+
+            var errorNames = Enum.GetValues(typeof(DeviceStatus))
+                .Cast<DeviceStatus>()
+                .Where(status => (addedErrors & (int)status) != 0)
+                .Select(status => status.ToString())
+                .ToArray();
+
+            if (errorNames.Length > 0)
+            {
+                string errorString = string.Join(", ", errorNames);
+                await SendEmailMessageAsync(errorString);
+            }
+
+            var data = new { NewError = errorNames.Length };
+            await SendMessage(data);
         }
         #endregion
 
         #region Sedning Message D2C
-        //poniższa metoda służy do wysyłania wiadomości z device do cloud
         public async Task SendMessage(object data)
         {
-            Console.WriteLine("\n Sending message... ");
-            //formatowanie wiadomosci do wyslania
             var dataString = JsonConvert.SerializeObject(data);
             Message eventMessage = new Message(Encoding.UTF8.GetBytes(dataString));
             eventMessage.ContentType = MediaTypeNames.Application.Json;
             eventMessage.ContentEncoding = "utf-8";
-            //wysłanie wiadomości
+            
             await client.SendEventAsync(eventMessage);
-            Console.WriteLine("\n FINISHED... ");
+            Console.WriteLine("\n ...FINISHED");
         }
         #endregion
 
-        ///komunikacja: odbieranie wiadomości
         #region Receiving messege C2D
 
         private async Task OnC2dMessageReceivedAsync(Message receivedMessage, object _)
         {
             Console.WriteLine($"\t {DateTime.Now.ToLocalTime()} > C2D message callback - message received with id = {receivedMessage.MessageId}\n");
-            PrintMessage(receivedMessage);  //wyświetlanie otrzymanej wiadomości
-            await client.CompleteAsync(receivedMessage);    //informacja dla IoT Hub, że wiadomość została odczytana, więc może usuwać wiadomość z kolejki Device
-            receivedMessage.Dispose();  //usuwa wiadomość
-            //wiadomość jest czyszczona z kolejki, aby zrobić przejście dla pozostałych wiadomości
+            PrintMessage(receivedMessage);
+            await client.CompleteAsync(receivedMessage);
+            receivedMessage.Dispose();
         }
 
-        //funkcja wypisująca wiadomość
         private void PrintMessage(Message receivedMessage)
         {
-            //odkodowujemy wiadomość, którą otrzymujemy (konwersja z utf8 na ASCII
             string messageData = Encoding.ASCII.GetString(receivedMessage.GetBytes());
             Console.WriteLine($"\t \t Received message: {messageData} ");
             int propCount = 0;
             foreach (var prop in receivedMessage.Properties)
             {
-                //wypisujemy jak dokładnie wygląda każda propercja
                 Console.WriteLine($"\t\t Property {(propCount++)} > Key={prop.Key} : Value={prop.Value}");
             }
         }
         #endregion
 
-        ///obsługiwanie metod urządzenia (można powiedzieć że to taka zdalna kontrola)
+        #region Sending Email
+        private async Task SendEmailMessageAsync(string errorString)
+        {
+            try
+            {
+                var subject = $"New error on {opcDeviceName}";
+                var body = $"The following errors have been detected: {errorString}.";
+
+                EmailContent emailContent = new EmailContent(subject);
+                emailContent.PlainText = body;
+                EmailMessage emailMessage = new EmailMessage(senderAddress, receiverAddress, emailContent);
+
+                EmailSendOperation emailSendOperation = await senderClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
+                Console.WriteLine($"\nFinished sending email about an error: {errorString}");
+            }
+            catch (RequestFailedException ex)
+            {
+                throw new RequestFailedException(ex.ErrorCode);
+            }
+        }
+        #endregion
+
         #region Direct Methods
-        //obsługwanie metod wywołanych przez device IoTHub
         private async Task<MethodResponse> DeviceStatusErrorHandler(MethodRequest methodRequest, object userContext)
         {
-            //co za metoda została otrzymana
             var result = opcClient.CallMethod($"ns=2;s={opcDeviceName}", $"ns=2;s={opcDeviceName}/{methodRequest.Name}");
             if (result != null)
             {
@@ -146,23 +184,18 @@ namespace SDKDemo.Device
             {
                 Console.WriteLine($"Failed to execute {methodRequest.Name}.");
             }
-            await Task.Delay(1000); //mowi ze brakuje await
+            await Task.Delay(1000);
             return new MethodResponse(0);
         }
-
-        //w jaki sposób obsługiwać metody, dla których nie napisano oddzielnych funckji obsługiwania
         private async Task<MethodResponse> DefaultServiceHandler(MethodRequest methodRequest, object userContext)
         {
-            Console.WriteLine($"\t METHOD EXECUTED: {methodRequest.Name}");
+            Console.WriteLine($"\t TRIGGERED METHOD: {methodRequest.Name}");
             await Task.Delay(1000);
             return new MethodResponse(0);
         }
         #endregion
 
-
-        ///synchronizacja device twinów
         #region Device Twin
-
         public async Task<int> GetReportedDeviceStatusAsync()
         {
             var twin = await client.GetTwinAsync();
@@ -179,7 +212,7 @@ namespace SDKDemo.Device
                 {
                     if (Enum.TryParse<DeviceStatus>(status, true, out var parsedStatus))
                     {
-                        deviceStatusNumber |= (int)parsedStatus; // Add the flag to the result
+                        deviceStatusNumber |= (int)parsedStatus;
                     }
                 }
 
@@ -192,27 +225,23 @@ namespace SDKDemo.Device
         public async Task UpdateTwinAsync(IEnumerable<OpcValue> job)
         {
             var twin = await client.GetTwinAsync();
-            //Console.WriteLine($"\n Initial twin value received: \n{JsonConvert.SerializeObject(twin, Formatting.Indented)}");
-            //Console.WriteLine();
 
             var reportedProperties = new TwinCollection();
-            //ustawienie Production Rate
             reportedProperties["ProductionRate"] = job.ElementAt(3).Value;
 
             #region Reported State
-            //konwersja wartosci z job
             var deviceStatusValue = (int)job.ElementAt(13).Value;
-            //jezeli status sie zmienil
             if (deviceStatusValue != lastReportedStatus) {
+                sendNewDeviceError(lastReportedStatus, deviceStatusValue);
                 sendDeviceStatus(lastReportedStatus, deviceStatusValue);
+
                 lastReportedStatus = deviceStatusValue;
                 var deviceStatus = (DeviceStatus)deviceStatusValue;
                 
-                //zrobienie listy z aktywnych flag
                 var activeStatuses = Enum.GetValues(typeof(DeviceStatus))
                     .Cast<DeviceStatus>()
                     .Where(flag => flag != DeviceStatus.None && deviceStatus.HasFlag(flag))
-                    .Select(flag => flag.ToString()) // Konwersja na string
+                    .Select(flag => flag.ToString())
                     .ToList();
 
                 reportedProperties["DeviceStatus"] = new JArray(activeStatuses);
@@ -225,16 +254,25 @@ namespace SDKDemo.Device
         private async Task OnDesiredPropertyChange(TwinCollection desiredProperties, object userContext)
         {
             Console.WriteLine($"\t Desired property change: \n\t {JsonConvert.SerializeObject(desiredProperties)}");
-            Console.WriteLine($"\t Sending current time as reported property");
+            
             TwinCollection reportedCollection = new TwinCollection();
-            reportedCollection["ProductionRate"] = desiredProperties["ProductionRate"];
-            using (var client = new OpcClient("opc.tcp://localhost:4840/"))
-            {
-                client.Connect();
-                client.WriteNode($"ns=2;s={opcDeviceName}/ProductionRate", (int)desiredProperties["ProductionRate"]);
-                Console.WriteLine("Updated");
 
+            if (desiredProperties["EmergencyTrigger"] == 1)
+            {
+                var result = opcClient.CallMethod($"ns=2;s={opcDeviceName}", $"ns=2;s={opcDeviceName}/EmergencyStop");
+                if (result != null)
+                {
+                    Console.WriteLine($"/EmergencyStop executed successfully.");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to execute /EmergencyStop.");
+                }
             }
+
+            reportedCollection["ProductionRate"] = desiredProperties["ProductionRate"];
+            opcClient.WriteNode($"ns=2;s={opcDeviceName}/ProductionRate", (int)desiredProperties["ProductionRate"]);
+
             await client.UpdateReportedPropertiesAsync(reportedCollection).ConfigureAwait(false);
         }
         #endregion

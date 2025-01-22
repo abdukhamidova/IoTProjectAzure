@@ -61,7 +61,16 @@ namespace Service.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to iot constr.
+        ///   Looks up a localized string similar to nazwa-kolejki-errors.
+        /// </summary>
+        internal static string deviceErrorQueueName {
+            get {
+                return ResourceManager.GetString("deviceErrorQueueName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to HostName=.....
         /// </summary>
         internal static string iotHubConnectionString {
             get {
@@ -70,7 +79,7 @@ namespace Service.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to kpi queue.
+        ///   Looks up a localized string similar to nazwa-kolejki-kpi.
         /// </summary>
         internal static string productionKPIQueueName {
             get {
@@ -79,7 +88,7 @@ namespace Service.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to serv bus.
+        ///   Looks up a localized string similar to Endpoint=....
         /// </summary>
         internal static string serviceBusConnectionString {
             get {

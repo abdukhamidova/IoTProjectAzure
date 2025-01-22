@@ -16,50 +16,58 @@ var manager = new IoTHubManager(serviceClient, registryManager);
 
 #region Service Bus
 string sbConnectionString = Resources.serviceBusConnectionString;
-string queueName = Resources.productionKPIQueueName;
 
-//połączenie z Busem
+
 await using ServiceBusClient client = new ServiceBusClient(sbConnectionString);
-await using ServiceBusProcessor processorKPI = client.CreateProcessor(queueName);  //przetwarza wiadomosci kpi
+await using ServiceBusProcessor processorKPI = client.CreateProcessor(Resources.productionKPIQueueName);
+await using ServiceBusProcessor processorErrors = client.CreateProcessor(Resources.deviceErrorQueueName);
 
-//jezeli taka wiadomosc jest przeslana to przetwarzamy ta wiadomosc w ten sposob
-processorKPI.ProcessMessageAsync += Processor_ProcessMessageAsync;
+processorKPI.ProcessMessageAsync += Processor_ProcessKPIMessageAsync;
 processorKPI.ProcessErrorAsync += Process_ErrorAsync;
+
+processorErrors.ProcessMessageAsync += Processor_ProcessErrorMessageAsync;
+processorErrors.ProcessErrorAsync += Process_ErrorAsync;
 
 
 await processorKPI.StartProcessingAsync();
+await processorErrors.StartProcessingAsync();
 
 Console.WriteLine("Waiting for messages... Press ENTER to stop.");
 Console.ReadLine();
 
 Console.WriteLine("\n Stopping receiving messages.");
 await processorKPI.StopProcessingAsync();
+await processorErrors.StopProcessingAsync();
 Console.WriteLine("\n Stopped receiving messages.");
 
 
-async Task Processor_ProcessMessageAsync(ProcessMessageEventArgs arg)
+async Task Processor_ProcessKPIMessageAsync(ProcessMessageEventArgs arg)
 {
-    //pobranie wiadomosci z kolejki
-    Console.WriteLine($"RECEIVED MESSAGE: \n\t {arg.Message.Body}");    //pobieramy taka wiadomosc
+    Console.WriteLine($"RECEIVED MESSAGE: \n\t {arg.Message.Body}");
 
-    // wyciagniecie potrzebnych wartosci
-    // Deserializacja wiadomości JSON do JObject
     JObject productionRate = JObject.Parse(arg.Message.Body.ToString());
 
-    // Wyciąganie wartości z JObject
     string connectionDeviceId = productionRate["ConnectionDeviceId"].ToString();
     double kpi = productionRate["KPI"].Value<double>();
-    //Console.WriteLine($"Connection Device ID: {connectionDeviceId}");
-    //Console.WriteLine($"KPI: {kpi}");
 
-    //przetwarzanie KPI
     if (kpi < 90)
     {
         manager.ChangeProductionRateDesiredTwin(connectionDeviceId);
     }
     await arg.CompleteMessageAsync(arg.Message);
-    //wiadomosc uznawane jest za skonczona/przetworzona wiec usuwamy ja z kolejki
-    //jezeli sie cos wczesniej wywali (przed tym Complete...) to wiadomosc trafia do dead letteringu
+}
+
+async Task Processor_ProcessErrorMessageAsync(ProcessMessageEventArgs arg)
+{
+    Console.WriteLine($"RECEIVED MESSAGE: \n\t {arg.Message.Body}");
+
+    JObject deviceErrors = JObject.Parse(arg.Message.Body.ToString());
+
+    string connectionDeviceId = deviceErrors["ConnectionDeviceId"].ToString();
+    int occurredErrors = (int)deviceErrors["sumErrors"];
+    manager.SetEmergencyErrorTriggerDesiredTwin(connectionDeviceId, occurredErrors);
+
+    await arg.CompleteMessageAsync(arg.Message);
 }
 
 Task Process_ErrorAsync(ProcessErrorEventArgs arg)
